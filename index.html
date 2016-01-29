@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+path {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.land {
+  fill: #ddd;
+  z-index:0;
+}
+
+.land-circle1 {
+  fill: #f95f29;
+}
+.land-circle2 {
+  fill: #1d6a94;
+}
+.land-circle3 {
+  fill: #7ba915;
+}
+.land-circle4 {
+  fill: #c67095;
+}
+
+.border {
+  fill: none;
+  stroke: #fff;
+}
+
+.graph {
+  fill: none;
+  stroke: #000;
+}
+
+</style>
+<body style="background-color:black;">
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script>
+
+var width = 960,
+    height = 600;
+
+var projection = d3.geo.albersUsa()
+    .scale(1280)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+function getClass(point){
+   rnd=Math.random()
+   if (point[0]<400 && point[1]<240) return rnd > 0.2 ?'land-circle1':'land-circle2';
+   if (point[0]>400 && point[1]<240) return rnd > 0.2 ?'land-circle2':'land-circle3';
+   if (point[0]<400 && point[1]>240) return rnd > 0.3 ?'land-circle4':'land-circle1';
+   /*if (point[0]>400 && point[1]>240)*/ return rnd > 0.1 ?'land-circle3':'land-circle4';
+}
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+d3.json("us.json", function(error, us) {
+  if (error) throw error;
+
+  var geometryCollection = us.objects.counties,
+      featureCollection = topojson.feature(us, geometryCollection),
+      features = featureCollection.features,
+      neighbors = topojson.neighbors(geometryCollection.geometries);
+  var maxx=-1000000;
+  var minx=10000000;
+  var maxy=-1000000;
+  var miny=10000000;
+  features.forEach(function(feature, i) {
+    feature.centroid = path.centroid(feature);
+    if (feature.centroid.some(isNaN)) feature.centroid = null; // off the map
+//
+    if(feature.centroid && feature.centroid[0]>maxx)
+    {
+        maxx=feature.centroid[0];
+    }
+    if(feature.centroid && feature.centroid[1]>maxy)
+    {
+        maxy=feature.centroid[1];
+    }
+    if(feature.centroid && feature.centroid[0]<minx)
+    {
+        minx=feature.centroid[0];
+    }
+    if(feature.centroid && feature.centroid[1]<miny)
+    {
+        miny=feature.centroid[1];
+    }
+    if (feature.centroid && feature.centroid) 
+    {     
+       rnd1=Math.random();
+       rnd2=Math.random();
+       svg.append('circle').attr('class',getClass(feature.centroid)).attr('r',0).attr('cx',feature.centroid[0]).attr('cy',feature.centroid[1]).transition().delay(rnd1>0.5?rnd2*40000:0).attr('r',2);
+    }
+    /*features.forEach(function(feature2, j) {
+        feature2.centroid = path.centroid(feature2);
+    });*/
+//   
+    feature.neighbors = feature.centroid ? neighbors[i]
+        .filter(function(j) { return j < i && features[j].centroid; })
+        .map(function(j) { return features[j]; }) : [];
+  });
+console.log("maxx"+maxx);
+console.log("maxy"+maxy);
+console.log("minx"+minx);
+console.log("miny"+miny);
+  /*svg.append("path")
+      .attr("class", "land")
+      .datum(featureCollection)
+      .attr("d", path);
+
+  svg.append("path")
+      .attr("class", "border")
+      .datum(topojson.mesh(us, geometryCollection, function(a, b) { return a !== b; }))
+      .attr("d", path);
+  
+  svg.append("path")
+      .attr("class", "graph")
+      .datum(d3.merge(features.map(function(a) { return a.neighbors.map(function(b) { return [a, b]; }); })))
+      .attr("d", function(d) { return d.map(function(l) { return "M" + l[0].centroid + "L" + l[1].centroid; }).join(""); })
+      //.transition().duration(500);*/
+});
+
+d3.select(self.frameElement).style("height", height + "px");
+
+</script>
